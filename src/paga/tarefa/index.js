@@ -9,13 +9,13 @@ import {
   TouchableOpacity,
   useColorScheme,
   ImageBackground,
-} from "react-native";
-import { FAB, Searchbar } from "react-native-paper";
+} from 'react-native';
+import { FAB, Searchbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { lightTheme, darkTheme } from "../../componet/thema/thema";
+import { AddTarefa } from '../../componet/addTarefa';
 
-// Função que aplica o tema
 export function tema() {
   const colorScheme = useColorScheme();
   return colorScheme === "dark" ? darkTheme : lightTheme;
@@ -27,14 +27,11 @@ export default function Tarefa() {
   const temaAtual = tema();
   const styles = criarStyle(temaAtual);
 
-  const backgroundImage = colorScheme === 'dark'
-    ? require('../../image/escuro.avif')
-    : require('../../image/claro.jpeg');
-
+  const [modalAberto, setModalAberto] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const onChangeSearch = query => setSearchQuery(query);
 
-  const DATA = [
+  const [tarefas, setTarefas] = useState([
     {
       id: '1',
       titulo: 'Finalizar relatório',
@@ -63,35 +60,27 @@ export default function Tarefa() {
       tipo: 'Estudo',
       dataHora: '12/06/2025 14:00',
     },
-  ];
+  ]);
 
-  const tarefasFiltradas = DATA.filter(item =>
+  const tarefasFiltradas = tarefas.filter(item =>
     item.titulo.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getEstadoColor = (estado) => {
     switch (estado) {
-      case 'Concluído':
-        return 'green';
-      case 'Em andamento':
-        return 'orange';
-      case 'Pendente':
-        return 'red';
-      default:
-        return temaAtual.colors.text;
+      case 'Concluído': return 'green';
+      case 'Em andamento': return 'orange';
+      case 'Pendente': return 'red';
+      default: return temaAtual.colors.text;
     }
   };
 
   const getTipoIcon = (tipo) => {
     switch (tipo) {
-      case 'Trabalho':
-        return 'briefcase';
-      case 'Estudo':
-        return 'book-open-variant';
-      case 'Pessoal':
-        return 'account-heart';
-      default:
-        return 'clipboard-text';
+      case 'Trabalho': return 'briefcase';
+      case 'Estudo': return 'book-open-variant';
+      case 'Pessoal': return 'account-heart';
+      default: return 'clipboard-text';
     }
   };
 
@@ -134,6 +123,10 @@ export default function Tarefa() {
     </TouchableOpacity>
   );
 
+  const backgroundImage = colorScheme === 'dark'
+    ? require('../../image/escuro.avif')
+    : require('../../image/claro.jpeg');
+
   return (
     <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
       <SafeAreaView style={styles.outerContainer}>
@@ -144,6 +137,20 @@ export default function Tarefa() {
           style={{ margin: 16 }}
           inputStyle={{ color: temaAtual.colors.text }}
           iconColor={temaAtual.colors.primary}
+        />
+
+        <AddTarefa
+          visivel={modalAberto}
+          aoFechar={() => setModalAberto(false)}
+          aoSalvar={(dados) => {
+            const novaTarefa = {
+              id: (tarefas.length + 1).toString(),
+              ...dados,
+              estado: 'Pendente',
+            };
+            setTarefas([...tarefas, novaTarefa]);
+            setModalAberto(false);
+          }}
         />
 
         <StatusBar barStyle="dark-content" />
@@ -159,7 +166,7 @@ export default function Tarefa() {
         <FAB
           style={styles.fab}
           icon="plus"
-          onPress={() => console.log("Adicionar tarefa")}
+          onPress={() => setModalAberto(true)}
           color="white"
         />
       </SafeAreaView>
@@ -183,7 +190,7 @@ const criarStyle = (tema) => StyleSheet.create({
     justifyContent: 'flex-start',
   },
   card: {
-    backgroundColor: tema.colors.surface + 'dd', // leve transparência
+    backgroundColor: tema.colors.surface + 'dd',
     borderRadius: 10,
     padding: 15,
     paddingLeft: 50,
@@ -217,6 +224,7 @@ const criarStyle = (tema) => StyleSheet.create({
   fab: {
     position: 'absolute',
     bottom: 30,
+    right: 20,
     backgroundColor: '#6200ee',
   },
 });
