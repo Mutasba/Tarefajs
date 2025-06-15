@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,14 +6,33 @@ import {
   StatusBar,
   FlatList,
   Dimensions,
-  TouchableOpacity
+  TouchableOpacity,
+  useColorScheme,
+  ImageBackground,
 } from "react-native";
-import { FAB, useTheme } from "react-native-paper";
+import { FAB, Searchbar } from "react-native-paper";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { lightTheme, darkTheme } from "../../componet/thema/thema";
+
+// Função que aplica o tema
+export function tema() {
+  const colorScheme = useColorScheme();
+  return colorScheme === "dark" ? darkTheme : lightTheme;
+}
 
 export default function Tarefa() {
   const screenWidth = Dimensions.get('window').width;
-  const { colors } = useTheme();
+  const colorScheme = useColorScheme();
+  const temaAtual = tema();
+  const styles = criarStyle(temaAtual);
+
+  const backgroundImage = colorScheme === 'dark'
+    ? require('../../image/escuro.avif')
+    : require('../../image/claro.jpeg');
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const onChangeSearch = query => setSearchQuery(query);
 
   const DATA = [
     {
@@ -39,40 +58,16 @@ export default function Tarefa() {
     },
     {
       id: '4',
-      titulo: 'Comprar material',
-      estado: 'Concluído',
-      tipo: 'Pessoal',
-      dataHora: '09/06/2025 12:00',
-    },
-    {
-      id: '5',
-      titulo: 'Comprar material',
-      estado: 'Concluído',
-      tipo: 'Pessoal',
-      dataHora: '09/06/2025 12:00',
-    },
-    {
-      id: '6',
-      titulo: 'Comprar material',
-      estado: 'Concluído',
-      tipo: 'Pessoal',
-      dataHora: '09/06/2025 12:00',
-    },
-    {
-      id: '7',
-      titulo: 'Comprar material',
-      estado: 'Concluído',
-      tipo: 'Pessoal',
-      dataHora: '09/06/2025 12:00',
-    },
-    {
-      id: '8',
-      titulo: 'Comprar material',
-      estado: 'Concluído',
-      tipo: 'Pessoal',
-      dataHora: '09/06/2025 12:00',
+      titulo: 'Estudar matemática',
+      estado: 'Em andamento',
+      tipo: 'Estudo',
+      dataHora: '12/06/2025 14:00',
     },
   ];
+
+  const tarefasFiltradas = DATA.filter(item =>
+    item.titulo.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const getEstadoColor = (estado) => {
     switch (estado) {
@@ -83,7 +78,20 @@ export default function Tarefa() {
       case 'Pendente':
         return 'red';
       default:
-        return 'gray';
+        return temaAtual.colors.text;
+    }
+  };
+
+  const getTipoIcon = (tipo) => {
+    switch (tipo) {
+      case 'Trabalho':
+        return 'briefcase';
+      case 'Estudo':
+        return 'book-open-variant';
+      case 'Pessoal':
+        return 'account-heart';
+      default:
+        return 'clipboard-text';
     }
   };
 
@@ -97,6 +105,14 @@ export default function Tarefa() {
       onPress={() => onPressItem(item)}
       activeOpacity={0.7}
     >
+      <View style={styles.iconContainer}>
+        <Icon
+          name={getTipoIcon(item.tipo)}
+          size={28}
+          color={temaAtual.colors.primary}
+        />
+      </View>
+
       <Text style={styles.titulo}>{item.titulo}</Text>
 
       <View style={styles.infoRow}>
@@ -119,47 +135,58 @@ export default function Tarefa() {
   );
 
   return (
-    <SafeAreaView style={styles.outerContainer}>
-      <StatusBar barStyle="dark-content" />
-      <View style={[styles.container, { width: screenWidth * 0.9 }]}>
-        <FlatList
-          data={DATA}
-          keyExtractor={item => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 100 }}
+    <ImageBackground source={backgroundImage} style={styles.background} resizeMode="cover">
+      <SafeAreaView style={styles.outerContainer}>
+        <Searchbar
+          placeholder="Pesquisar tarefa..."
+          onChangeText={onChangeSearch}
+          value={searchQuery}
+          style={{ margin: 16 }}
+          inputStyle={{ color: temaAtual.colors.text }}
+          iconColor={temaAtual.colors.primary}
         />
-      </View>
-      <StatusBar
-        hidden={false} 
-        backgroundColor="transparent"
-      />
 
-      <FAB
-        style={styles.fab}
-        icon="plus"
-        onPress={() => console.log("Adicionar tarefa")}
-        color="white"
-      />
+        <StatusBar barStyle="dark-content" />
+        <View style={[styles.container, { width: screenWidth * 0.9 }]}>
+          <FlatList
+            data={tarefasFiltradas}
+            keyExtractor={item => item.id}
+            renderItem={renderItem}
+            contentContainerStyle={{ paddingBottom: 100 }}
+          />
+        </View>
 
-    </SafeAreaView>
-
+        <FAB
+          style={styles.fab}
+          icon="plus"
+          onPress={() => console.log("Adicionar tarefa")}
+          color="white"
+        />
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
-const styles = StyleSheet.create({
+const criarStyle = (tema) => StyleSheet.create({
+  background: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   outerContainer: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: "#f5f5f5",
+    backgroundColor: 'transparent',
   },
   container: {
     flex: 1,
     justifyContent: 'flex-start',
   },
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: tema.colors.surface + 'dd', // leve transparência
     borderRadius: 10,
     padding: 15,
+    paddingLeft: 50,
     marginVertical: 8,
     elevation: 3,
     width: '100%',
@@ -168,7 +195,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#333',
+    color: tema.colors.text,
   },
   infoRow: {
     flexDirection: 'row',
@@ -176,11 +203,16 @@ const styles = StyleSheet.create({
   },
   label: {
     fontWeight: '600',
-    color: '#555',
+    color: tema.colors.text,
     width: 100,
   },
   value: {
-    color: '#777',
+    color: tema.colors.text,
+  },
+  iconContainer: {
+    position: 'absolute',
+    top: 15,
+    left: 15,
   },
   fab: {
     position: 'absolute',

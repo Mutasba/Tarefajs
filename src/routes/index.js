@@ -10,7 +10,7 @@ export default function Routes() {
     <NavigationContainer>
       <Stack.Navigator initialRouteName="inicio">
         <Stack.Screen name="inicio" component={Inicio} options={{ headerShown: false }}/>
-        <Stack.Screen name='Tarefa'component={Tarefa} />
+        <Stack.Screen name='Tarefa'component={Tarefa} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
