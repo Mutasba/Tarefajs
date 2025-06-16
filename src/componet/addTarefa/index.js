@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -11,18 +11,23 @@ import {
   useColorScheme,
 } from 'react-native';
 
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+const VISIBLE_ITEMS = 3;
+const ITEM_HEIGHT = 60;
+const PADDING_HEIGHT = ((VISIBLE_ITEMS - 1) / 2) * ITEM_HEIGHT;
+const LOOP_COUNT = 100;
 
 export function AddTarefa({ visivel, aoFechar, salvar }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const [horaSelecionada, setHoraSelecionada] = useState(7);
-  const [minutoSelecionado, setMinutoSelecionado] = useState(30);
+  const agora = new Date();
+  const [horaSelecionada, setHoraSelecionada] = useState(agora.getHours());
+  const [minutoSelecionado, setMinutoSelecionado] = useState(agora.getMinutes());
   const [dataSelecionada, setDataSelecionada] = useState(new Date());
-  const [diaSemanaSelecionado, setDiaSemanaSelecionado] = useState(new Date().getDay());
+  const [diaSemanaSelecionado, setDiaSemanaSelecionado] = useState(agora.getDay());
   const [titulo, setTitulo] = useState('');
   const [tipo, setTipo] = useState('Pessoal');
   const [descricao, setDescricao] = useState('');
@@ -32,68 +37,82 @@ export function AddTarefa({ visivel, aoFechar, salvar }) {
     return data.toLocaleDateString('pt-BR', opcoes);
   };
 
-  const renderItem = (item, selected, onSelect) => (
-    <TouchableOpacity onPress={() => onSelect(item)} style={styles.timeItem}>
-      <Text style={[styles.timeText, selected && styles.selectedTimeText]}>
-        {item < 10 ? `0${item}` : item}
-      </Text>
-    </TouchableOpacity>
-  );
-
   const themeStyles = getThemeStyles(isDark);
+
+  const renderInfiniteFlatList = (originalData, selectedValue, setValue) => {
+    const extendedData = Array.from({ length: LOOP_COUNT * originalData.length }, (_, i) =>
+      originalData[i % originalData.length]
+    );
+    const initialIndex = Math.floor(extendedData.length / 2) + selectedValue;
+
+    return (
+      <FlatList
+        data={extendedData}
+        keyExtractor={(_, index) => index.toString()}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={ITEM_HEIGHT}
+        decelerationRate="fast"
+        initialScrollIndex={initialIndex}
+        getItemLayout={(_, index) => ({
+          length: ITEM_HEIGHT,
+          offset: ITEM_HEIGHT * index,
+          index,
+        })}
+        onMomentumScrollEnd={(e) => {
+          const offsetY = e.nativeEvent.contentOffset.y;
+          const index = Math.round(offsetY / ITEM_HEIGHT);
+          const value = extendedData[index % originalData.length];
+          setValue(value);
+        }}
+        ListHeaderComponent={<View style={{ height: PADDING_HEIGHT }} />}
+        ListFooterComponent={<View style={{ height: PADDING_HEIGHT }} />}
+        style={{ width: 60 }}
+        renderItem={({ item }) => (
+          <View style={styles.timeItem}>
+            <Text
+              style={[
+                styles.timeText,
+                item === selectedValue && styles.selectedTimeText,
+              ]}
+            >
+              {item < 10 ? `0${item}` : item}
+            </Text>
+          </View>
+        )}
+      />
+    );
+  };
 
   return (
     <Modal visible={visivel} animationType="slide" transparent onRequestClose={aoFechar}>
       <View style={styles.container}>
         <View style={[styles.modalContent, themeStyles.modalBackground]}>
-
           {/* Picker de Hora e Minuto */}
           <View style={styles.pickerContainer}>
-            <FlatList
-              data={HOURS}
-              keyExtractor={(item) => item.toString()}
-              showsVerticalScrollIndicator={false}
-              style={styles.picker}
-              snapToInterval={60}
-              decelerationRate="fast"
-              initialScrollIndex={horaSelecionada - 1}
-              getItemLayout={(data, index) => ({ length: 60, offset: 60 * index, index })}
-              renderItem={({ item }) => renderItem(item, item === horaSelecionada, setHoraSelecionada)}
-            />
+            {renderInfiniteFlatList(HOURS, horaSelecionada, setHoraSelecionada)}
             <View style={styles.separator}>
               <Text style={styles.separatorText}>:</Text>
             </View>
-            <FlatList
-              data={MINUTES}
-              keyExtractor={(item) => item.toString()}
-              showsVerticalScrollIndicator={false}
-              style={styles.picker}
-              snapToInterval={60}
-              decelerationRate="fast"
-              initialScrollIndex={minutoSelecionado}
-              getItemLayout={(data, index) => ({ length: 60, offset: 60 * index, index })}
-              renderItem={({ item }) => renderItem(item, item === minutoSelecionado, setMinutoSelecionado)}
-            />
+            {renderInfiniteFlatList(MINUTES, minutoSelecionado, setMinutoSelecionado)}
           </View>
 
-          {/* Conteúdo */}
           <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-
             <View style={styles.dataContainer}>
-              <Text style={[styles.dataExtenso, themeStyles.text]}>{formatarDataExtenso(dataSelecionada)}</Text>
+              <Text style={[styles.dataExtenso, themeStyles.text]}>
+                {formatarDataExtenso(dataSelecionada)}
+              </Text>
               <TouchableOpacity onPress={() => alert('Abrir seletor de calendário')}>
                 <Text style={{ fontSize: 28, color: '#6C63FF' }}>📅</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Dias da semana */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.diasSemanaContainer}>
               {diasSemana.map((dia, index) => {
                 const isSelected = index === diaSemanaSelecionado;
                 return (
                   <TouchableOpacity
                     key={index}
-                    style={[styles.diaSemana, { paddingVertical: 4, paddingHorizontal: 8 }, isSelected && styles.diaSemanaSelecionado]}
+                    style={[styles.diaSemana, isSelected && styles.diaSemanaSelecionado]}
                     onPress={() => {
                       setDiaSemanaSelecionado(index);
                       const hoje = new Date();
@@ -144,7 +163,6 @@ export function AddTarefa({ visivel, aoFechar, salvar }) {
             />
           </ScrollView>
 
-          {/* Botões */}
           <View style={styles.buttonsRow}>
             <TouchableOpacity onPress={aoFechar} style={styles.buttonCancelar}>
               <Text style={styles.textCancelar}>Cancelar</Text>
@@ -156,7 +174,6 @@ export function AddTarefa({ visivel, aoFechar, salvar }) {
               <Text style={styles.textSalvar}>Salvar</Text>
             </TouchableOpacity>
           </View>
-
         </View>
       </View>
     </Modal>
@@ -191,26 +208,22 @@ const styles = StyleSheet.create({
   pickerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    height: 180,
+    height: ITEM_HEIGHT * VISIBLE_ITEMS,
     marginBottom: 10,
   },
-  picker: {
-    height: 180,
-    width: 60,
-  },
   timeItem: {
-    height: 60,
+    height: ITEM_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
   },
   timeText: {
-    color: '#777',
-    fontSize: 40,
+    fontSize: 30,
+    color: 'rgba(160, 160, 160, 0.4)',
   },
   selectedTimeText: {
-    color: '#000',
+    fontSize: 40,
     fontWeight: 'bold',
+    color: '#6C63FF',
   },
   separator: {
     justifyContent: 'center',
@@ -239,6 +252,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 6,
     backgroundColor: '#eee',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   diaSemanaSelecionado: {
     backgroundColor: '#6C63FF',
